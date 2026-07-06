@@ -1,6 +1,9 @@
 //! Physical (M2) calibration converters for timsTOF TDF data.
 
+pub mod mz;
 pub mod sql;
+
+pub use mz::CalibratedTof2MzConverter;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CalibrationError {
