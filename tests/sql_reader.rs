@@ -1,6 +1,8 @@
 use timsrust_calibration::sql::read_all;
 
-fn test_tdf() -> Option<String> { std::env::var("TIMSRUST_CAL_TEST_TDF").ok() }
+fn test_tdf() -> Option<String> {
+    std::env::var("TIMSRUST_CAL_TEST_TDF").ok()
+}
 
 #[test]
 fn reads_calibration_tables_and_frames() {

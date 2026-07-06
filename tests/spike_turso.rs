@@ -1,4 +1,6 @@
-fn test_tdf() -> Option<String> { std::env::var("TIMSRUST_CAL_TEST_TDF").ok() }
+fn test_tdf() -> Option<String> {
+    std::env::var("TIMSRUST_CAL_TEST_TDF").ok()
+}
 
 #[test]
 fn turso_reads_mzcalibration_and_frames_t1() {
