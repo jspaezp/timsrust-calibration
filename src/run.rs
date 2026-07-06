@@ -7,6 +7,13 @@ use crate::{
     CalibrationError,
 };
 
+/// Physical (M2) calibration for one Bruker `.d` run, built from the
+/// `MzCalibration`, `TimsCalibration`, and `Frames` tables of its
+/// `analysis.tdf`.
+///
+/// Construct with [`RunCalibration::from_path`], then obtain per-frame or
+/// run-median converters via `mz_converter`/`im_converter` and their
+/// `_median` counterparts.
 pub struct RunCalibration {
     mz_cals: Vec<MzCalibration>,
     tims_cals: Vec<TimsCalibration>,
@@ -16,6 +23,13 @@ pub struct RunCalibration {
 }
 
 impl RunCalibration {
+    /// Read the calibration tables from the `.tdf` sqlite file at `path`
+    /// and index them by frame.
+    ///
+    /// `path` is the path to the `analysis.tdf` file itself, not the
+    /// enclosing `.d` directory. See [`crate::sql`] module docs for a
+    /// caveat about a WAL sidecar file the current backend leaves next to
+    /// `path`.
     pub fn from_path(path: impl AsRef<str>) -> Result<Self, CalibrationError> {
         let (mz_cals, tims_cals, frames) = read_all(path.as_ref())?;
         let frame_by_id = frames
@@ -24,7 +38,7 @@ impl RunCalibration {
             .map(|(i, f)| (f.frame_id, i))
             .collect();
         let mut t1s: Vec<f64> = frames.iter().map(|f| f.t1).collect();
-        t1s.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        t1s.sort_by(|a, b| a.total_cmp(b));
         let median_t1 = t1s[t1s.len() / 2];
         Ok(Self {
             mz_cals,
@@ -53,40 +67,64 @@ impl RunCalibration {
         self.frame_by_id
             .get(&frame_id)
             .map(|&i| &self.frames[i])
-            .ok_or(CalibrationError::CalIdNotFound(frame_id as u8))
+            .ok_or(CalibrationError::FrameNotFound(frame_id))
     }
 
+    /// Build a TOF->m/z converter for a single frame.
+    ///
+    /// `frame_id` is the Bruker `Frames.Id` (1-based instrument frame
+    /// index), **not** a 0-based offset into any in-memory list.
     pub fn mz_converter(
         &self,
         frame_id: usize,
     ) -> Result<CalibratedTof2MzConverter, CalibrationError> {
         let frame = self.frame(frame_id)?;
-        let cal = self.mz_cal_by_id(frame.cal_id)?;
+        let cal = self.mz_cal_by_id(frame.mz_cal_id)?;
         CalibratedTof2MzConverter::try_from_calibration(cal, frame.t1)
     }
 
+    /// Build a TOF->m/z converter using the `MzCalibration` row referenced
+    /// by the *first* frame and the median T1 across all frames.
+    ///
+    /// This assumes a single calibration per run: it uses `frames[0]`'s
+    /// `mz_cal_id` and mixes T1 values across *all* frames regardless of
+    /// which calibration each frame actually references. If a run ever
+    /// contains multiple distinct calibrations, this method will silently
+    /// combine T1s from different calibrations into one median.
     pub fn mz_converter_median(&self) -> Result<CalibratedTof2MzConverter, CalibrationError> {
         // use the calibration referenced by the first frame
-        let cal_id = self.frames[0].cal_id;
+        let cal_id = self.frames[0].mz_cal_id;
         let cal = self.mz_cal_by_id(cal_id)?;
         CalibratedTof2MzConverter::try_from_calibration(cal, self.median_t1)
     }
 
+    /// Build a scan->ion-mobility (1/K0) converter for a single frame.
+    ///
+    /// `frame_id` is the Bruker `Frames.Id` (1-based instrument frame
+    /// index), **not** a 0-based offset into any in-memory list.
     pub fn im_converter(
         &self,
         frame_id: usize,
     ) -> Result<CalibratedScan2ImConverter, CalibrationError> {
         let frame = self.frame(frame_id)?;
-        let cal = self.tims_cal_by_id(frame.cal_id)?;
+        let cal = self.tims_cal_by_id(frame.tims_cal_id)?;
         CalibratedScan2ImConverter::try_from_calibration(cal)
     }
 
+    /// Build a scan->ion-mobility (1/K0) converter using the
+    /// `TimsCalibration` row referenced by the *first* frame.
+    ///
+    /// Like [`Self::mz_converter_median`], this assumes a single
+    /// calibration per run (it uses `frames[0]`'s `tims_cal_id`); it does
+    /// not attempt to detect or reconcile multiple distinct calibrations
+    /// within one run.
     pub fn im_converter_median(&self) -> Result<CalibratedScan2ImConverter, CalibrationError> {
-        let cal_id = self.frames[0].cal_id;
+        let cal_id = self.frames[0].tims_cal_id;
         let cal = self.tims_cal_by_id(cal_id)?;
         CalibratedScan2ImConverter::try_from_calibration(cal)
     }
 
+    /// The T1 range (max - min) across all frames in the run.
     pub fn t1_spread(&self) -> f64 {
         let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
         for f in &self.frames {

@@ -1,4 +1,17 @@
 //! Physical (M2) calibration converters for timsTOF TDF data.
+//!
+//! This crate reads the physical calibration tables (`MzCalibration`,
+//! `TimsCalibration`, `Frames`) directly out of a Bruker `analysis.tdf`
+//! sqlite file and builds [`timsrust_core::Converter`] implementations for
+//! TOF-index -> m/z ([`CalibratedTof2MzConverter`]) and
+//! scan-index -> ion mobility (1/K0) ([`CalibratedScan2ImConverter`]).
+//!
+//! "M2" scope: these converters implement the *physical* calibration model
+//! (the polynomial models Bruker stores per-run in the TDF cal tables), as
+//! opposed to any downstream recalibration (e.g. lock-mass/MS1-based
+//! recalibration) that might be layered on top elsewhere.
+//!
+//! The entry point is [`RunCalibration::from_path`].
 
 pub mod im;
 pub mod mz;
@@ -9,6 +22,8 @@ pub use im::CalibratedScan2ImConverter;
 pub use mz::CalibratedTof2MzConverter;
 pub use run::RunCalibration;
 
+/// Errors returned while reading TDF calibration tables or building
+/// converters from them.
 #[derive(Debug, thiserror::Error)]
 pub enum CalibrationError {
     #[error("failed to open TDF sqlite: {0}")]
@@ -29,4 +44,7 @@ pub enum CalibrationError {
     MissingImCoefficients(u8),
     #[error("calibration id {0} not found")]
     CalIdNotFound(u8),
+    /// The requested `frame_id` (a `Frames.Id` value) has no matching row.
+    #[error("frame {0} not found")]
+    FrameNotFound(usize),
 }

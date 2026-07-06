@@ -71,7 +71,14 @@ to produce physically sane converters:
 ## `Frames` / T1 setup
 
 Both files have 10 frames (`Id` 1..10), all referencing `MzCalibration`
-id 1.
+id 1 via `Frames.MzCalibration` **and** `TimsCalibration` id 1 via the
+separate `Frames.TimsCalibration` column (Bruker's schema has two distinct
+FK columns on `Frames`; the generator sets both to `1` here). Because both
+FKs point at real, well-formed rows, these are the only fixtures where
+`RunCalibration::im_converter`/`im_converter_median` succeed end-to-end
+(see the `flat_file_im_converter_in_sane_range` golden test) — real DDA
+files observed so far have an empty `TimsCalibration` table, and real DIA
+files observed so far have `NULL` `TimsCalibration` coefficients.
 
 - **`flat_t1.d/analysis.tdf`**: every frame's `T1` equals the calibration's
   reference `T1` (`20.9410989491122`), so the per-frame drift correction

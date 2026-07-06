@@ -92,7 +92,8 @@ def create_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE Frames (
             Id INTEGER PRIMARY KEY,
             T1 REAL,
-            MzCalibration INTEGER
+            MzCalibration INTEGER,
+            TimsCalibration INTEGER
         )
         """
     )
@@ -142,7 +143,7 @@ def insert_calibrations(conn: sqlite3.Connection) -> None:
 def insert_frames(conn: sqlite3.Connection, t1_values: list[float]) -> None:
     for frame_id, t1 in enumerate(t1_values, start=1):
         conn.execute(
-            "INSERT INTO Frames (Id, T1, MzCalibration) VALUES (?, ?, 1)",
+            "INSERT INTO Frames (Id, T1, MzCalibration, TimsCalibration) VALUES (?, ?, 1, 1)",
             (frame_id, t1),
         )
 
