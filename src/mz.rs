@@ -2,6 +2,12 @@ use timsrust_core::{Converter, Mz, TofIndex};
 
 use crate::{sql::MzCalibration, CalibrationError};
 
+/// Physical (M2) TOF-index <-> m/z converter, built from one Bruker
+/// `MzCalibration` row plus the actual digitizer T1 observed for a given
+/// frame (or a run-median T1; see [`crate::RunCalibration`]).
+///
+/// Implements [`timsrust_core::Converter`] in both directions
+/// ([`TofIndex`] -> [`Mz`] and [`Mz`] -> [`TofIndex`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CalibratedTof2MzConverter {
     c0: f64,
@@ -11,6 +17,11 @@ pub struct CalibratedTof2MzConverter {
 }
 
 impl CalibratedTof2MzConverter {
+    /// Build a converter from an `MzCalibration` row and the real
+    /// (per-frame or median) T1 used for the digitizer-drift correction.
+    ///
+    /// Only `model_type == 1` is supported; other model types and
+    /// calibrations missing `c0`/`c1` return an error.
     pub fn try_from_calibration(
         cal: &MzCalibration,
         real_t1: f64,

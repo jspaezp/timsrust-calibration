@@ -2,6 +2,11 @@ use timsrust_core::{Converter, Im, ScanIndex};
 
 use crate::{sql::TimsCalibration, CalibrationError};
 
+/// Physical (M2) scan-index <-> ion-mobility (1/K0) converter, built from
+/// one Bruker `TimsCalibration` row.
+///
+/// Implements [`timsrust_core::Converter`] in both directions
+/// ([`ScanIndex`] -> [`Im`] and [`Im`] -> [`ScanIndex`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CalibratedScan2ImConverter {
     c6: f64,
@@ -11,6 +16,10 @@ pub struct CalibratedScan2ImConverter {
 }
 
 impl CalibratedScan2ImConverter {
+    /// Build a converter from a `TimsCalibration` row.
+    ///
+    /// Only `model_type == 2` is supported; other model types and
+    /// calibrations missing any of `c0`..`c4`/`c6`/`c7` return an error.
     pub fn try_from_calibration(cal: &TimsCalibration) -> Result<Self, CalibrationError> {
         if cal.model_type != 2 {
             return Err(CalibrationError::UnsupportedImModel(cal.model_type));
