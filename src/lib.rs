@@ -1,8 +1,10 @@
 //! Physical (M2) calibration converters for timsTOF TDF data.
 
+pub mod im;
 pub mod mz;
 pub mod sql;
 
+pub use im::CalibratedScan2ImConverter;
 pub use mz::CalibratedTof2MzConverter;
 
 #[derive(Debug, thiserror::Error)]
