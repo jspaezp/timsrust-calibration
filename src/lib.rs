@@ -2,10 +2,12 @@
 
 pub mod im;
 pub mod mz;
+pub mod run;
 pub mod sql;
 
 pub use im::CalibratedScan2ImConverter;
 pub use mz::CalibratedTof2MzConverter;
+pub use run::RunCalibration;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CalibrationError {
