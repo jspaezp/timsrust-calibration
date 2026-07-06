@@ -122,7 +122,7 @@ def insert_calibrations(conn: sqlite3.Connection) -> None:
         """
         INSERT INTO TimsCalibration
             (Id, ModelType, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9)
-        VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (2, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             TIMS_MODEL_TYPE,
@@ -141,9 +141,13 @@ def insert_calibrations(conn: sqlite3.Connection) -> None:
 
 
 def insert_frames(conn: sqlite3.Connection, t1_values: list[float]) -> None:
+    # MzCalibration id (1) and TimsCalibration id (2) are deliberately
+    # different so a regression that swaps which FK feeds the m/z vs. IM
+    # converter is caught as a CalIdNotFound error rather than silently
+    # resolving to the same (coincidentally shared) row.
     for frame_id, t1 in enumerate(t1_values, start=1):
         conn.execute(
-            "INSERT INTO Frames (Id, T1, MzCalibration, TimsCalibration) VALUES (?, ?, 1, 1)",
+            "INSERT INTO Frames (Id, T1, MzCalibration, TimsCalibration) VALUES (?, ?, 1, 2)",
             (frame_id, t1),
         )
 

@@ -27,10 +27,12 @@ fn spread_file_median_differs_from_per_frame() {
 
 #[test]
 fn flat_file_im_converter_in_sane_range() {
-    // flat_t1.d now has a valid TimsCalibration FK (Frames.TimsCalibration = 1)
-    // and good coefficients, so this is the only place IM works end-to-end
-    // (real DDA files have an empty TimsCalibration table, real DIA files
-    // observed so far have null TimsCalibration coefficients).
+    // flat_t1.d now has a valid TimsCalibration FK (Frames.TimsCalibration = 2,
+    // deliberately different from Frames.MzCalibration = 1 so an FK swap
+    // regression is caught) and good coefficients, so this is the only place
+    // IM works end-to-end (real DDA files have an empty TimsCalibration
+    // table, real DIA files observed so far have null TimsCalibration
+    // coefficients).
     let run = RunCalibration::from_path("tests/fixtures/flat_t1.d/analysis.tdf").unwrap();
 
     let per_frame = run.im_converter(1).unwrap();

@@ -35,7 +35,7 @@ relative paths, so no environment variables are required.
 ## Coefficients
 
 Both fixtures share the same `MzCalibration` (Id=1, ModelType=1) and
-`TimsCalibration` (Id=1, ModelType=2) rows, taken verbatim from the
+`TimsCalibration` (Id=2, ModelType=2) rows, taken verbatim from the
 crate's existing unit tests (`src/mz.rs`, `src/im.rs`) so they are known
 to produce physically sane converters:
 
@@ -71,10 +71,16 @@ to produce physically sane converters:
 ## `Frames` / T1 setup
 
 Both files have 10 frames (`Id` 1..10), all referencing `MzCalibration`
-id 1 via `Frames.MzCalibration` **and** `TimsCalibration` id 1 via the
+id 1 via `Frames.MzCalibration` **and** `TimsCalibration` id 2 via the
 separate `Frames.TimsCalibration` column (Bruker's schema has two distinct
-FK columns on `Frames`; the generator sets both to `1` here). Because both
-FKs point at real, well-formed rows, these are the only fixtures where
+FK columns on `Frames`). The generator deliberately gives `MzCalibration`
+and `TimsCalibration` *different* ids (1 vs. 2, instead of letting both
+tables coincidentally use id 1) so that a regression which swaps which FK
+feeds the m/z converter vs. the IM converter is actually caught: with
+mismatched ids, looking up the wrong table for a given id fails with
+`CalibrationError::CalIdNotFound` instead of silently succeeding against
+the same row. Because both FKs point at real, well-formed rows in their
+respective tables, these are the only fixtures where
 `RunCalibration::im_converter`/`im_converter_median` succeed end-to-end
 (see the `flat_file_im_converter_in_sane_range` golden test) — real DDA
 files observed so far have an empty `TimsCalibration` table, and real DIA
