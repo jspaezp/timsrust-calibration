@@ -2,25 +2,27 @@
 
 Physical (M2) m/z and mobility calibration converters for timsTOF TDF data.
 
-## Known limitation: WAL sidecar file on open
+## Read-only open, no WAL sidecar
 
 `RunCalibration::from_path` / `sql::read_all` open the `.tdf` sqlite file
-through the [`turso`](https://crates.io/crates/turso) crate (currently
-pinned to `0.1`). That version of turso has **no read-only or no-WAL open
-mode**: opening a file-backed database — even purely to read from it —
-unconditionally creates a `<path>-wal` sidecar file next to it (typically
-0 bytes, since this crate never writes). This is a limitation of turso
-itself (`turso_core::storage::wal::WalFileShared::open_shared_if_exists`
-always opens the wal path with `OpenFlags::Create`, and the public
-`turso::Builder` does not expose any way to override this), not something
-this crate can currently disable.
+through the [`turso`](https://crates.io/crates/turso) crate (`0.6`),
+strictly **read-only**, and never write a `-wal`/`-shm` sidecar next to it —
+including when the enclosing `.d` folder's filesystem is mounted read-only.
+
+This is implemented against the low-level `turso::core` (`turso_core`)
+engine rather than the ergonomic `turso::Builder`/`Connection`/`Rows`
+wrappers: as of `turso` 0.6.1 those high-level wrappers have no read-only
+option and don't parse `file:` URIs for the main database path. The path is
+canonicalized and opened as `file:<abs-path>?mode=ro&immutable=1` via
+`turso_core::Connection::from_uri`, which does parse SQLite URIs and
+correctly turns `mode=ro` into `OpenFlags::ReadOnly`. With that flag set,
+`WalFileShared::open_shared_if_exists` opens the `-wal` path *without*
+`OpenFlags::Create`, returning a no-op in-memory WAL when the sidecar
+doesn't already exist, instead of creating one on disk.
 
 Practical implications:
-- Every real Bruker `.d` folder opened via this crate will end up with an
-  `analysis.tdf-wal` file next to `analysis.tdf`.
-- If the `.d` folder's filesystem is genuinely read-only, opening will
-  fail outright (turso cannot create the sidecar), not just leave a stray
-  file.
+- Opening a real Bruker `.d` folder via this crate leaves **no** stray
+  files behind, and works against a genuinely read-only-mounted data
+  directory.
 
-If a future turso release adds a read-only/no-WAL mode, `sql::read_all`
-should be updated to use it.
+See `src/sql.rs` module docs for the exact URI/API details.

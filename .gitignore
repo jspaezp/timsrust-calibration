@@ -1,6 +1,8 @@
 /target
 Cargo.lock
 .superpowers/
+# read_all opens read-only via turso >=0.6 and no longer creates these; kept
+# as belt-and-suspenders in case a future change (or a test spike) regresses.
 tests/fixtures/**/*.tdf-wal
 tests/fixtures/**/*.tdf-shm
 tests/fixtures/**/*.tdf-journal

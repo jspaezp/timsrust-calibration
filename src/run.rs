@@ -27,9 +27,9 @@ impl RunCalibration {
     /// and index them by frame.
     ///
     /// `path` is the path to the `analysis.tdf` file itself, not the
-    /// enclosing `.d` directory. See [`crate::sql`] module docs for a
-    /// caveat about a WAL sidecar file the current backend leaves next to
-    /// `path`.
+    /// enclosing `.d` directory. The file is opened strictly read-only; see
+    /// [`crate::sql`] module docs for why this never creates a `-wal`/`-shm`
+    /// sidecar next to `path`.
     pub fn from_path(path: impl AsRef<str>) -> Result<Self, CalibrationError> {
         let (mz_cals, tims_cals, frames) = read_all(path.as_ref())?;
         let frame_by_id = frames
