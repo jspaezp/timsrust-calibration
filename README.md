@@ -37,7 +37,7 @@ use timsrust_calibration::RunCalibration;
 use timsrust_core::{Converter, TofIndex, ScanIndex};
 
 // Point at the analysis.tdf file inside a .d folder. Opened read-only:
-// no sidecar files are written; read-only-mounted data works.
+// your data is never modified, and read-only-mounted data works.
 let cal = RunCalibration::from_path("/data/run.d/analysis.tdf")?;
 
 // One converter per run (median temperature across frames) — the usual choice.
@@ -59,6 +59,26 @@ let im = cal.im_converter(frame_id)?;
 Use the per-run (`_median`) converters unless the run's temperature drifts;
 `cal.t1_spread()` (max − min temperature across frames) tells you which to pick.
 
+### With timsrust frames
+
+The converters are ordinary `timsrust_core::Converter`s, so they slot into
+`timsrust`'s frame reader — e.g. calibrated m/z for every ion in each frame:
+
+```rust
+use timsrust::TimsTofPath;
+use timsrust_calibration::RunCalibration;
+
+let cal = RunCalibration::from_path("/data/run.d/analysis.tdf")?;
+let mz = cal.mz_converter_median()?;
+
+let frames = TimsTofPath::new("/data/run.d")?.frame_reader()?;
+for index in frames.iter_indices() {
+    let frame = frames.get_frame(index)?;
+    let mz_values = frame.ions().mz_values(&mz); // Vec<Mz>, calibrated
+    // pair with frame.ions().intensities(), scan offsets, etc.
+}
+```
+
 ## API
 
 | Item | Purpose |
@@ -73,8 +93,8 @@ Use the per-run (`_median`) converters unless the run's temperature drifts;
 
 ## Notes & limitations
 
-- Reads the calibration tables directly from the `.tdf` sqlite, opened
-  read-only — no `-wal`/`-shm` files are created next to your data.
+- Opens the `.tdf` strictly read-only: it never modifies your data files and
+  works on read-only-mounted directories.
 - Applies the stored physical calibration only; no empirical/lock-mass
   recalibration.
 - Ion-mobility calibration needs the mobility coefficients to be present in the
