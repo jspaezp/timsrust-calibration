@@ -16,6 +16,7 @@ so they drop in wherever `timsrust`'s own converters are used.
 It applies the calibration stored in the file; it does **not** perform empirical
 recalibration (e.g. lock-mass or MS1-based correction).
 
+
 ## Install
 
 Not yet on crates.io. Add as a path/git dependency alongside `timsrust-core`
