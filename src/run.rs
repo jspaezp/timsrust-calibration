@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 
 use crate::{
     im::CalibratedScan2ImConverter,
@@ -30,8 +31,8 @@ impl RunCalibration {
     /// enclosing `.d` directory. The file is opened strictly read-only; see
     /// [`crate::sql`] module docs for why this never creates a `-wal`/`-shm`
     /// sidecar next to `path`.
-    pub fn from_path(path: impl AsRef<str>) -> Result<Self, CalibrationError> {
-        let (mz_cals, tims_cals, frames) = read_all(path.as_ref())?;
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, CalibrationError> {
+        let (mz_cals, tims_cals, frames) = read_all(path)?;
         let frame_by_id = frames
             .iter()
             .enumerate()
@@ -39,6 +40,8 @@ impl RunCalibration {
             .collect();
         let mut t1s: Vec<f64> = frames.iter().map(|f| f.t1).collect();
         t1s.sort_by(|a, b| a.total_cmp(b));
+        // NB: for an even-length `t1s` this is the upper-middle element
+        // (`t1s[len/2]`), not the usual average-of-two-middles median.
         let median_t1 = t1s[t1s.len() / 2];
         Ok(Self {
             mz_cals,
@@ -49,14 +52,14 @@ impl RunCalibration {
         })
     }
 
-    fn mz_cal_by_id(&self, id: u8) -> Result<&MzCalibration, CalibrationError> {
+    fn mz_cal_by_id(&self, id: u32) -> Result<&MzCalibration, CalibrationError> {
         self.mz_cals
             .iter()
             .find(|c| c.id == id)
             .ok_or(CalibrationError::CalIdNotFound(id))
     }
 
-    fn tims_cal_by_id(&self, id: u8) -> Result<&TimsCalibration, CalibrationError> {
+    fn tims_cal_by_id(&self, id: u32) -> Result<&TimsCalibration, CalibrationError> {
         self.tims_cals
             .iter()
             .find(|c| c.id == id)
@@ -91,6 +94,10 @@ impl RunCalibration {
     /// which calibration each frame actually references. If a run ever
     /// contains multiple distinct calibrations, this method will silently
     /// combine T1s from different calibrations into one median.
+    ///
+    /// "Median" here is `t1s[len/2]` on the sorted T1s, i.e. the
+    /// upper-middle element for an even-length run, not the conventional
+    /// average of the two middle elements.
     pub fn mz_converter_median(&self) -> Result<CalibratedTof2MzConverter, CalibrationError> {
         // use the calibration referenced by the first frame
         let cal_id = self.frames[0].mz_cal_id;

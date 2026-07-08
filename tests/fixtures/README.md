@@ -104,6 +104,29 @@ files observed so far have `NULL` `TimsCalibration` coefficients.
   (the golden test checks at TOF index `500000`, near the top of the TDF's
   practical TOF range) because the `C1` correction scales with `tof^2`.
 
+## Malformed fixtures (`tests/failure_paths.rs`)
+
+`generate.py` also emits a handful of deliberately-broken `.d` folders, each
+built from the same base rows with exactly one thing wrong, used by
+`tests/failure_paths.rs` to exercise every `CalibrationError` variant against
+a real (synthetic) TDF file rather than only via in-memory unit tests:
+
+| fixture | what's wrong | error exercised |
+| --- | --- | --- |
+| `null_mz_field.d` | `MzCalibration.DigitizerTimebase` is `NULL` | `UnexpectedNull { table: "MzCalibration", .. }` |
+| `null_frame_t1.d` | `Frames.T1` is `NULL` | `UnexpectedNull { table: "Frames", .. }` |
+| `missing_mz_coeffs.d` | `MzCalibration.C0` is `NULL` (schema-nullable, but `ModelType=1` needs it) | `MissingMzCoefficients` |
+| `missing_im_coeffs.d` | `TimsCalibration.C6` is `NULL` (schema-nullable, but `ModelType=2` needs it) | `MissingImCoefficients` |
+| `bad_mz_model.d` | `MzCalibration.ModelType = 99` | `UnsupportedMzModel` |
+| `bad_im_model.d` | `TimsCalibration.ModelType = 99` | `UnsupportedImModel` |
+| `bad_cal_id.d` | `Frames.MzCalibration` points at id `999`, which has no row | `CalIdNotFound` |
+
+`FrameNotFound` and the inverse-converter panic-safety edge cases
+(NaN/±Inf/huge input) don't need a fixture — they're exercised against
+`flat_t1.d` (an out-of-range `frame_id`) and as pure in-memory unit tests in
+`src/mz.rs`/`src/im.rs` respectively, since they don't depend on anything
+read from a TDF file.
+
 ## Why the golden test doesn't hard-code absolute m/z values
 
 `tests/golden.rs` only makes *relative* assertions (median vs. per-frame

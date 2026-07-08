@@ -9,8 +9,6 @@ license = "Apache-2.0"
 timsrust-core = { path = "../upstream_timsrust/crates/timsrust-core" }
 turso = "0.6"
 thiserror = "2"
-pollster = "0.4"   # bare block_on, zero-dep; fallback to smol if turso needs a reactor
-# smol = "2"       # uncomment + swap block_on if Task-1 spike shows turso needs an I/O reactor
 
 [dev-dependencies]
 # test data comes from the checked-in timsrust test fixtures

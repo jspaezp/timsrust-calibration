@@ -5,12 +5,14 @@ fn test_tdf() -> Option<String> {
     std::env::var("TIMSRUST_CAL_TEST_TDF").ok()
 }
 
+/// Requires a real Bruker `.tdf` file: run with
+/// `TIMSRUST_CAL_TEST_TDF=/path/to/analysis.tdf cargo test -- --ignored`.
+/// `#[ignore]`d (rather than a runtime early-return) so a plain `cargo test`
+/// shows this as skipped instead of a false-green pass-while-testing-nothing.
 #[test]
+#[ignore]
 fn builds_converters_from_real_file() {
-    let Some(tdf) = test_tdf() else {
-        eprintln!("skip: set TIMSRUST_CAL_TEST_TDF");
-        return;
-    };
+    let tdf = test_tdf().expect("set TIMSRUST_CAL_TEST_TDF to run this ignored test");
     let run = RunCalibration::from_path(&tdf).unwrap();
 
     // median converter produces m/z within the acquisition range for tof 0.

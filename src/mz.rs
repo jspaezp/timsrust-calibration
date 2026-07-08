@@ -65,8 +65,14 @@ impl Converter<TofIndex, Mz> for CalibratedTof2MzConverter {
 impl Converter<Mz, TofIndex> for CalibratedTof2MzConverter {
     fn convert(&self, value: Mz) -> TofIndex {
         let result = self.invert_f64(f64::from(value));
-        TofIndex::try_from(result.round().max(0.0) as u32)
-            .expect("TofIndex conversion out of bounds")
+        // `Converter::convert` is infallible, but `TofIndex::try_from(u32)`
+        // panics on `u32::MAX` (it computes `x + 1` into a `NonZeroU32`).
+        // That's reachable here: e.g. `c1 == 0` makes `invert_f64` return
+        // `+Inf`, which saturates to `u32::MAX` via `as u32`. Clamp
+        // non-finite/out-of-range results to a deterministic, always-valid
+        // index instead of ever panicking.
+        TofIndex::try_from(crate::clamp_f64_to_index(result))
+            .expect("clamp_f64_to_index always returns a value TofIndex can represent")
     }
 }
 
@@ -84,14 +90,9 @@ mod test {
             digitizer_timebase: 0.125,
             digitizer_delay: 25741.0,
             t1: 20.9410989491122,
-            t2: 24.8706161298104,
             dc1: 20.0,
-            dc2: 0.0,
             c0: Some(286.065160463331),
             c1: Some(154317.348188993),
-            c2: None,
-            c3: None,
-            c4: None,
         };
         let real_t1 = 20.9455139021767;
         let conv = CalibratedTof2MzConverter::try_from_calibration(&cal, real_t1).unwrap();
@@ -105,5 +106,51 @@ mod test {
         // round trip
         let back: TofIndex = conv.convert(Mz::from(mz_max));
         assert!((u32::from(back) as i64 - 636029).abs() <= 1);
+    }
+
+    /// `c1 == 0` makes `invert_f64` compute `sqrt(mz*1e12/0) == +Inf`; this
+    /// must clamp to a valid index rather than panicking (see the
+    /// `Converter<Mz, TofIndex>` impl).
+    #[test]
+    fn invert_with_zero_c1_does_not_panic() {
+        let cal = MzCalibration {
+            id: 1,
+            model_type: 1,
+            digitizer_timebase: 0.125,
+            digitizer_delay: 25741.0,
+            t1: 20.0,
+            dc1: 0.0,
+            c0: Some(286.0),
+            c1: Some(0.0),
+        };
+        let conv = CalibratedTof2MzConverter::try_from_calibration(&cal, 20.0).unwrap();
+        let idx: TofIndex = conv.convert(Mz::from(500.0));
+        assert!(u32::from(idx) < u32::MAX);
+    }
+
+    /// NaN and huge finite inputs must also clamp deterministically instead
+    /// of panicking.
+    #[test]
+    fn invert_with_non_finite_or_huge_input_does_not_panic() {
+        let cal = MzCalibration {
+            id: 1,
+            model_type: 1,
+            digitizer_timebase: 0.125,
+            digitizer_delay: 25741.0,
+            t1: 20.0,
+            dc1: 0.0,
+            c0: Some(286.0),
+            c1: Some(154317.348188993),
+        };
+        let conv = CalibratedTof2MzConverter::try_from_calibration(&cal, 20.0).unwrap();
+
+        let nan_idx: TofIndex = conv.convert(Mz::from(f64::NAN));
+        assert_eq!(u32::from(nan_idx), 0);
+
+        let inf_idx: TofIndex = conv.convert(Mz::from(f64::INFINITY));
+        assert_eq!(u32::from(inf_idx), u32::MAX - 1);
+
+        let huge_idx: TofIndex = conv.convert(Mz::from(f64::MAX));
+        assert_eq!(u32::from(huge_idx), u32::MAX - 1);
     }
 }

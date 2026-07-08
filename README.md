@@ -119,6 +119,11 @@ converters at runtime.)
 - Ion-mobility calibration needs the mobility coefficients to be present in the
   file. Some acquisitions store none; `im_converter*` then returns an error
   while the m/z path still works.
+- IM calibration applies the static `TimsCalibration` polynomial only; it does
+  not apply the per-frame pressure compensation Bruker's format allows
+  (`Frames.Pressure`, which Bruker's schema documents as "required to perform
+  a pressure compensated tims calibration" — we don't have Bruker's
+  pressure-comp formula, so it isn't implemented here). It may diverge on runs with significant pressure drift.
 - The per-run (`_median`) converters assume a single calibration per run.
 
 ## License
