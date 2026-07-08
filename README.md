@@ -80,6 +80,24 @@ for index in frames.iter_indices() {
 }
 ```
 
+### Calibrating MS2 spectra
+
+`timsrust`'s facade `SpectrumReader` converts each spectrum to m/z with the
+**stock** converter before you get it, so you can't inject calibration there.
+Instead read spectra at the tdf level, where they arrive as `Spectrum<TofIndex>`
+(raw TOF), and convert with this crate's converter:
+
+```rust
+// reader: a timsrust::tdf spectrum reader → yields Spectrum<TofIndex>
+let spectrum = reader.get(index)?;
+let calibrated_mz = spectrum.mz_values(&mz); // Vec<Mz>, calibrated fragments
+```
+
+Calibrate **fragment peaks only** — the precursor m/z in a TDF is a value the
+instrument stored (not TOF-derived), so leave it as-is. (See the `sage`
+integration for a full worked example, including selecting stock-vs-calibrated
+converters at runtime.)
+
 ## API
 
 | Item | Purpose |
