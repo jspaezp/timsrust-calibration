@@ -67,16 +67,25 @@ The converters are ordinary `timsrust_core::Converter`s, so they slot into
 
 ```rust
 use timsrust::TimsTofPath;
+use timsrust::core::{Converter, ScanIndex};
 use timsrust_calibration::RunCalibration;
 
 let cal = RunCalibration::from_path("/data/run.d/analysis.tdf")?;
 let mz = cal.mz_converter_median()?;
+let im = cal.im_converter_median()?;
 
 let frames = TimsTofPath::new("/data/run.d")?.frame_reader()?;
 for index in frames.iter_indices() {
     let frame = frames.get_frame(index)?;
+
+    // m/z is per peak:
     let mz_values = frame.ions().mz_values(&mz); // Vec<Mz>, calibrated
-    // pair with frame.ions().intensities(), scan offsets, etc.
+
+    // mobility is per scan (use frame.ions().scan_offsets() to map peaks → scan):
+    for scan in 0..frame.ions().scan_count() {
+        let one_over_k0 = im.convert(ScanIndex::try_from(scan as u32)?); // Im
+        // ...
+    }
 }
 ```
 
