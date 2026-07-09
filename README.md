@@ -37,9 +37,21 @@ SQLite reads use the pure-Rust [`turso`](https://crates.io/crates/turso) engine
 use timsrust_calibration::RunCalibration;
 use timsrust_core::{Converter, TofIndex, ScanIndex};
 
-// Point at the analysis.tdf file inside a .d folder. Opened read-only:
-// your data is never modified, and read-only-mounted data works.
+// `from_path` is opened read-only: your data is never modified, and
+// read-only-mounted data works. It accepts any of:
+
+// 1. the analysis.tdf file inside a .d folder directly
 let cal = RunCalibration::from_path("/data/run.d/analysis.tdf")?;
+
+// 2. the enclosing .d run directory (analysis.tdf is resolved for you)
+let cal = RunCalibration::from_path("/data/run.d")?;
+
+// 3. any `impl AsRef<str>`, in particular a `timsrust::TimsTofPath` — its
+//    `AsRef<str>` yields the .d directory, so this works with no extra
+//    plumbing and without this crate depending on `timsrust` itself:
+use timsrust::TimsTofPath;
+let p = TimsTofPath::new("/data/run.d")?;
+let cal = RunCalibration::from_path(&p)?;
 
 // One converter per run (median temperature across frames) — the usual choice.
 let mz = cal.mz_converter_median()?;
@@ -48,6 +60,11 @@ let im = cal.im_converter_median()?;
 let mz_value    = mz.convert(TofIndex::try_from(250_000u32)?); // -> Mz
 let one_over_k0 = im.convert(ScanIndex::try_from(400u32)?);    // -> Im
 ```
+
+Note: `from_path` does not auto-detect the acquisition format the way
+`timsrust` does — it just looks for `analysis.tdf` at the resolved path/`.d`
+directory. Pointing it at a non-TDF acquisition (TSF, miniTDF, Parquet, ...)
+simply fails to find `analysis.tdf` and returns an error.
 
 For maximum accuracy, build a converter for a specific frame (temperature
 varies frame to frame). `frame_id` is the Bruker `Frames.Id` (1-based):

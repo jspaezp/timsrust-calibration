@@ -13,6 +13,8 @@
 //!
 //! The entry point is [`RunCalibration::from_path`].
 
+#![warn(missing_docs)]
+
 pub mod im;
 pub mod mz;
 pub mod run;
@@ -26,16 +28,26 @@ pub use run::RunCalibration;
 /// converters from them.
 #[derive(Debug, thiserror::Error)]
 pub enum CalibrationError {
+    /// Failed to open/canonicalize the TDF sqlite file (I/O error, invalid
+    /// UTF-8 path, or the resolved `analysis.tdf` doesn't exist).
     #[error("failed to open TDF sqlite: {0}")]
     Open(String),
+    /// A sqlite query (`prepare`/`step`) against the TDF failed, or the
+    /// query was interrupted/found the database busy.
     #[error("query failed: {0}")]
     Query(String),
+    /// The `MzCalibration` table has no rows.
     #[error("no MzCalibration rows")]
     NoCalibration,
+    /// The `Frames` table has no rows.
     #[error("no frames")]
     NoFrames,
+    /// The requested `MzCalibration` row's `ModelType` isn't the one this
+    /// crate implements (only `1` is supported).
     #[error("unsupported MzCalibration model_type {0}")]
     UnsupportedMzModel(u8),
+    /// The requested `TimsCalibration` row's `ModelType` isn't the one this
+    /// crate implements (only `2` is supported).
     #[error("unsupported TimsCalibration model_type {0}")]
     UnsupportedImModel(u8),
     /// A model-required polynomial coefficient (`C0`..`C4`/`C6`/`C7`) was
@@ -48,6 +60,8 @@ pub enum CalibrationError {
     /// See [`Self::MissingMzCoefficients`]; the `TimsCalibration` analogue.
     #[error("TimsCalibration {0} missing coefficients")]
     MissingImCoefficients(u32),
+    /// A frame's `MzCalibration`/`TimsCalibration` FK value has no matching
+    /// row in the corresponding calibration table.
     #[error("calibration id {0} not found")]
     CalIdNotFound(u32),
     /// The requested `frame_id` (a `Frames.Id` value) has no matching row.
@@ -61,7 +75,10 @@ pub enum CalibrationError {
     /// column list.
     #[error("{table}.{column} is NULL but the schema declares it NOT NULL")]
     UnexpectedNull {
+        /// The table containing the unexpectedly-`NULL` column (e.g.
+        /// `"MzCalibration"`, `"Frames"`).
         table: &'static str,
+        /// The `NOT NULL` column that was found `NULL`.
         column: &'static str,
     },
 }

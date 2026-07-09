@@ -1,3 +1,6 @@
+//! Physical (M2) TOF-index <-> m/z conversion; see
+//! [`CalibratedTof2MzConverter`].
+
 use timsrust_core::{Converter, Mz, TofIndex};
 
 use crate::{sql::MzCalibration, CalibrationError};

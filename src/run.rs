@@ -1,5 +1,8 @@
+//! [`RunCalibration`]: the run-level entry point that reads a `.tdf`'s
+//! calibration tables and hands out per-frame/run-median converters.
+
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::{
     im::CalibratedScan2ImConverter,
@@ -15,6 +18,7 @@ use crate::{
 /// Construct with [`RunCalibration::from_path`], then obtain per-frame or
 /// run-median converters via `mz_converter`/`im_converter` and their
 /// `_median` counterparts.
+#[derive(Debug)]
 pub struct RunCalibration {
     mz_cals: Vec<MzCalibration>,
     tims_cals: Vec<TimsCalibration>,
@@ -24,15 +28,36 @@ pub struct RunCalibration {
 }
 
 impl RunCalibration {
-    /// Read the calibration tables from the `.tdf` sqlite file at `path`
-    /// and index them by frame.
+    /// Read the calibration tables from a Bruker run and index them by
+    /// frame.
     ///
-    /// `path` is the path to the `analysis.tdf` file itself, not the
-    /// enclosing `.d` directory. The file is opened strictly read-only; see
-    /// [`crate::sql`] module docs for why this never creates a `-wal`/`-shm`
-    /// sidecar next to `path`.
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, CalibrationError> {
-        let (mz_cals, tims_cals, frames) = read_all(path)?;
+    /// `path` accepts any of:
+    /// - the `analysis.tdf` file itself (e.g.
+    ///   `"/data/run.d/analysis.tdf"`),
+    /// - the enclosing `.d` run directory (e.g. `"/data/run.d"`), or
+    /// - any other `impl AsRef<str>`, in particular a
+    ///   `timsrust::TimsTofPath` — that type implements `AsRef<str>`,
+    ///   yielding the `.d` run directory, so `from_path(&timstof_path)`
+    ///   works without this crate depending on `timsrust` at all.
+    ///
+    /// Resolution: a `file://` prefix is stripped if present; the remaining
+    /// path is used as-is if it already names an existing file or ends in
+    /// `analysis.tdf` (no double-appending), otherwise `analysis.tdf` is
+    /// joined onto it as a `.d` directory.
+    ///
+    /// The file is opened strictly read-only; see [`crate::sql`] module
+    /// docs for why this never creates a `-wal`/`-shm` sidecar next to it.
+    ///
+    /// # Limitation: no acquisition-format auto-detection
+    ///
+    /// This does not detect the acquisition format the way `timsrust` does.
+    /// A path to a non-TDF acquisition (TSF, miniTDF, Parquet, ...) simply
+    /// fails to find an `analysis.tdf` and returns
+    /// [`CalibrationError::Open`]. Reusing timsrust's format detection
+    /// would need its `pub(crate)` `file_type()` made public upstream.
+    pub fn from_path(path: impl AsRef<str>) -> Result<Self, CalibrationError> {
+        let tdf = resolve_tdf_path(path.as_ref());
+        let (mz_cals, tims_cals, frames) = read_all(tdf)?;
         let frame_by_id = frames
             .iter()
             .enumerate()
@@ -139,5 +164,52 @@ impl RunCalibration {
             hi = hi.max(f.t1);
         }
         hi - lo
+    }
+}
+
+/// Resolve a user-supplied path/URI-ish string into the concrete
+/// `analysis.tdf` file path.
+///
+/// Strips a `file://` prefix if present, then uses the remainder as-is if
+/// it already names an existing file or ends in `analysis.tdf` (avoiding a
+/// double-append when already given the file), otherwise treats it as a
+/// `.d` run directory and joins `analysis.tdf` onto it.
+fn resolve_tdf_path(s: &str) -> PathBuf {
+    let s = s.strip_prefix("file://").unwrap_or(s);
+    let p = Path::new(s);
+    if p.is_file() || p.ends_with("analysis.tdf") {
+        p.to_path_buf()
+    } else {
+        p.join("analysis.tdf")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// `from_path` must accept the `.d` run directory (no `analysis.tdf`
+    /// suffix) and resolve to the same data as the explicit file path,
+    /// mirroring how a `timsrust::TimsTofPath` (via its `AsRef<str>`,
+    /// yielding the `.d` dir) would be passed in.
+    #[test]
+    fn from_path_accepts_d_dir_and_matches_file_path() {
+        let from_dir = RunCalibration::from_path("tests/fixtures/flat_t1.d")
+            .expect("should resolve tests/fixtures/flat_t1.d/analysis.tdf");
+        let from_file = RunCalibration::from_path("tests/fixtures/flat_t1.d/analysis.tdf")
+            .expect("explicit file path should still work");
+
+        assert_eq!(from_dir.mz_cals, from_file.mz_cals);
+        assert_eq!(from_dir.tims_cals, from_file.tims_cals);
+        assert_eq!(from_dir.frames, from_file.frames);
+        assert_eq!(from_dir.median_t1, from_file.median_t1);
+    }
+
+    /// A path already ending in `analysis.tdf` must not get `analysis.tdf`
+    /// appended again.
+    #[test]
+    fn resolve_tdf_path_does_not_double_append() {
+        let resolved = resolve_tdf_path("tests/fixtures/flat_t1.d/analysis.tdf");
+        assert_eq!(resolved, Path::new("tests/fixtures/flat_t1.d/analysis.tdf"));
     }
 }

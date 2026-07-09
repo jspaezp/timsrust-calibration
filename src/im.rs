@@ -1,3 +1,6 @@
+//! Physical (M2) scan-index <-> ion-mobility (1/K0) conversion; see
+//! [`CalibratedScan2ImConverter`].
+
 use timsrust_core::{Converter, Im, ScanIndex};
 
 use crate::{sql::TimsCalibration, CalibrationError};

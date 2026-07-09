@@ -83,13 +83,23 @@ use turso::core as turso_core;
 /// `C3`, `C4`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MzCalibration {
+    /// `MzCalibration.Id` (primary key), referenced by `Frames.MzCalibration`.
     pub id: u32,
+    /// `MzCalibration.ModelType`; only `1` is supported by
+    /// [`crate::mz::CalibratedTof2MzConverter`].
     pub model_type: u8,
+    /// `MzCalibration.DigitizerTimebase`.
     pub digitizer_timebase: f64,
+    /// `MzCalibration.DigitizerDelay`.
     pub digitizer_delay: f64,
+    /// `MzCalibration.T1`, the reference digitizer temperature the
+    /// calibration was fit at.
     pub t1: f64,
+    /// `MzCalibration.dC1`, the per-degree drift coefficient for `C1`.
     pub dc1: f64,
+    /// `MzCalibration.C0`; schema-nullable (see module docs).
     pub c0: Option<f64>,
+    /// `MzCalibration.C1`; schema-nullable (see module docs).
     pub c1: Option<f64>,
 }
 
@@ -99,14 +109,25 @@ pub struct MzCalibration {
 /// the module docs for the columns dropped as unused (`C5`, `C8`, `C9`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct TimsCalibration {
+    /// `TimsCalibration.Id` (primary key), referenced by
+    /// `Frames.TimsCalibration`.
     pub id: u32,
+    /// `TimsCalibration.ModelType`; only `2` is supported by
+    /// [`crate::im::CalibratedScan2ImConverter`].
     pub model_type: u8,
+    /// `TimsCalibration.C0`; schema-nullable (see module docs).
     pub c0: Option<f64>,
+    /// `TimsCalibration.C1`; schema-nullable (see module docs).
     pub c1: Option<f64>,
+    /// `TimsCalibration.C2`; schema-nullable (see module docs).
     pub c2: Option<f64>,
+    /// `TimsCalibration.C3`; schema-nullable (see module docs).
     pub c3: Option<f64>,
+    /// `TimsCalibration.C4`; schema-nullable (see module docs).
     pub c4: Option<f64>,
+    /// `TimsCalibration.C6`; schema-nullable (see module docs).
     pub c6: Option<f64>,
+    /// `TimsCalibration.C7`; schema-nullable (see module docs).
     pub c7: Option<f64>,
 }
 
@@ -117,6 +138,7 @@ pub struct TimsCalibration {
 pub struct FrameCal {
     /// The Bruker `Frames.Id` (1-based instrument frame index).
     pub frame_id: usize,
+    /// `Frames.T1`, the digitizer temperature observed for this frame.
     pub t1: f64,
     /// FK into `MzCalibration.Id` (`Frames.MzCalibration`).
     pub mz_cal_id: u32,
