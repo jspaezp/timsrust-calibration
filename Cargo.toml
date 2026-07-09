@@ -8,6 +8,7 @@ repository = "https://github.com/jspaezp/timsrust-calibration"
 readme = "README.md"
 keywords = ["mass-spectrometry", "timstof", "bruker", "calibration", "proteomics"]
 categories = ["science"]
+exclude = ["tests/fixtures/generate.py", "tests/fixtures/README.md"]
 
 [dependencies]
 timsrust-core = "0.1.4"

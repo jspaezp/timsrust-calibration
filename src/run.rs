@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::{
     im::CalibratedScan2ImConverter,
     mz::CalibratedTof2MzConverter,
-    sql::{read_all, FrameCal, MzCalibration, TimsCalibration},
+    sql::{read_all, CalibrationTables, FrameCal, MzCalibration, TimsCalibration},
     CalibrationError,
 };
 
@@ -57,7 +57,11 @@ impl RunCalibration {
     /// would need its `pub(crate)` `file_type()` made public upstream.
     pub fn from_path(path: impl AsRef<str>) -> Result<Self, CalibrationError> {
         let tdf = resolve_tdf_path(path.as_ref());
-        let (mz_cals, tims_cals, frames) = read_all(tdf)?;
+        let CalibrationTables {
+            mz: mz_cals,
+            tims: tims_cals,
+            frames,
+        } = read_all(tdf)?;
         let frame_by_id = frames
             .iter()
             .enumerate()
@@ -125,7 +129,11 @@ impl RunCalibration {
     /// average of the two middle elements.
     pub fn mz_converter_median(&self) -> Result<CalibratedTof2MzConverter, CalibrationError> {
         // use the calibration referenced by the first frame
-        let cal_id = self.frames[0].mz_cal_id;
+        let cal_id = self
+            .frames
+            .first()
+            .expect("RunCalibration is only constructed via from_path, which errors (NoFrames) on empty frames")
+            .mz_cal_id;
         let cal = self.mz_cal_by_id(cal_id)?;
         CalibratedTof2MzConverter::try_from_calibration(cal, self.median_t1)
     }
@@ -151,7 +159,11 @@ impl RunCalibration {
     /// not attempt to detect or reconcile multiple distinct calibrations
     /// within one run.
     pub fn im_converter_median(&self) -> Result<CalibratedScan2ImConverter, CalibrationError> {
-        let cal_id = self.frames[0].tims_cal_id;
+        let cal_id = self
+            .frames
+            .first()
+            .expect("RunCalibration is only constructed via from_path, which errors (NoFrames) on empty frames")
+            .tims_cal_id;
         let cal = self.tims_cal_by_id(cal_id)?;
         CalibratedScan2ImConverter::try_from_calibration(cal)
     }

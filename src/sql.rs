@@ -152,7 +152,15 @@ pub struct FrameCal {
 
 /// Return type of [`read_all`]: the raw `MzCalibration`, `TimsCalibration`,
 /// and per-frame calibration-linkage rows read from a TDF sqlite file.
-pub type CalibrationTables = (Vec<MzCalibration>, Vec<TimsCalibration>, Vec<FrameCal>);
+#[derive(Clone, Debug, PartialEq)]
+pub struct CalibrationTables {
+    /// The `MzCalibration` rows (physical TOF->m/z models).
+    pub mz: Vec<MzCalibration>,
+    /// The `TimsCalibration` rows (physical scan->1/K0 mobility models).
+    pub tims: Vec<TimsCalibration>,
+    /// The per-frame calibration-linkage rows read from `Frames`.
+    pub frames: Vec<FrameCal>,
+}
 
 /// Read the `MzCalibration`, `TimsCalibration`, and `Frames` tables from a
 /// Bruker `analysis.tdf` sqlite file.
@@ -234,7 +242,7 @@ pub fn read_all(path: impl AsRef<Path>) -> Result<CalibrationTables, Calibration
     if frames.is_empty() {
         return Err(CalibrationError::NoFrames);
     }
-    Ok((mz, tims, frames))
+    Ok(CalibrationTables { mz, tims, frames })
 }
 
 /// Percent-encode a filesystem path for embedding in a SQLite `file:` URI

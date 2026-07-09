@@ -12,7 +12,10 @@ fn test_tdf() -> Option<String> {
 #[ignore]
 fn reads_calibration_tables_and_frames() {
     let tdf = test_tdf().expect("set TIMSRUST_CAL_TEST_TDF to run this ignored test");
-    let (mz, tims, frames) = read_all(&tdf).unwrap();
+    let tables = read_all(&tdf).unwrap();
+    let mz = &tables.mz;
+    let tims = &tables.tims;
+    let frames = &tables.frames;
     assert!(!mz.is_empty(), "no MzCalibration");
     assert_eq!(mz[0].model_type, 1);
     assert!(mz[0].c0.is_some() && mz[0].c1.is_some());
