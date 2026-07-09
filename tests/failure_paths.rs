@@ -98,6 +98,42 @@ fn unknown_frame_id_errors() {
     );
 }
 
+#[test]
+fn missing_tdf_file_errors() {
+    // A path to a non-existent `.d` directory: `analysis.tdf` is resolved
+    // under it but doesn't exist, so `from_path` reports FileNotFound rather
+    // than a raw sqlite-engine error.
+    let err = RunCalibration::from_path("does/not/exist.d").unwrap_err();
+    assert!(
+        matches!(err, CalibrationError::FileNotFound(_)),
+        "expected FileNotFound, got {err:?}"
+    );
+
+    // A bogus explicit `analysis.tdf` path behaves the same via read_all.
+    let err = read_all("does/not/exist.d/analysis.tdf").unwrap_err();
+    assert!(
+        matches!(err, CalibrationError::FileNotFound(_)),
+        "expected FileNotFound, got {err:?}"
+    );
+}
+
+#[test]
+fn not_a_tdf_sqlite_errors() {
+    // A valid sqlite file with no MzCalibration table: it opens, but the
+    // defining table is absent, so both read_all and from_path report NotATdf.
+    let err = read_all("tests/fixtures/not_a_tdf.d/analysis.tdf").unwrap_err();
+    assert!(
+        matches!(err, CalibrationError::NotATdf(_)),
+        "expected NotATdf, got {err:?}"
+    );
+
+    let err = RunCalibration::from_path("tests/fixtures/not_a_tdf.d/analysis.tdf").unwrap_err();
+    assert!(
+        matches!(err, CalibrationError::NotATdf(_)),
+        "expected NotATdf, got {err:?}"
+    );
+}
+
 /// The module doc on `src/sql.rs` claims a read-only open never creates a
 /// `-wal`/`-shm` sidecar next to the `.tdf` file. Verify it against a real
 /// fixture rather than just trusting the source comment.

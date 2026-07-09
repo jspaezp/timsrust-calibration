@@ -18,6 +18,7 @@ Produces:
   tests/fixtures/bad_mz_model.d/analysis.tdf    -- MzCalibration.ModelType unsupported
   tests/fixtures/bad_im_model.d/analysis.tdf    -- TimsCalibration.ModelType unsupported
   tests/fixtures/bad_cal_id.d/analysis.tdf      -- Frames.MzCalibration FK dangles
+  tests/fixtures/not_a_tdf.d/analysis.tdf       -- valid sqlite, no MzCalibration table
 
 Run with:
   uv run --no-project python tests/fixtures/generate.py
@@ -300,6 +301,23 @@ def build_bad_cal_id(path: Path) -> None:
         conn.close()
 
 
+def build_not_a_tdf(path: Path) -> None:
+    """A valid sqlite file that is NOT a TDF: it has a single dummy table and
+    no `MzCalibration` table at all. `read_all` opens it fine but the first
+    prepare (`SELECT ... FROM MzCalibration`) fails, exercising
+    `CalibrationError::NotATdf`."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        path.unlink()
+    conn = sqlite3.connect(path)
+    try:
+        conn.execute("CREATE TABLE NotACalibration (Id INTEGER PRIMARY KEY, Value REAL)")
+        conn.execute("INSERT INTO NotACalibration (Id, Value) VALUES (1, 42.0)")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def main() -> None:
     fixtures_dir = Path(__file__).resolve().parent
 
@@ -323,6 +341,7 @@ def main() -> None:
         "bad_mz_model.d": build_bad_mz_model,
         "bad_im_model.d": build_bad_im_model,
         "bad_cal_id.d": build_bad_cal_id,
+        "not_a_tdf.d": build_not_a_tdf,
     }
     for name, builder in malformed.items():
         builder(fixtures_dir / name / "analysis.tdf")

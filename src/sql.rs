@@ -170,22 +170,35 @@ pub struct CalibrationTables {
 /// for why this never creates a `-wal`/`-shm` sidecar.
 ///
 /// # Errors
-/// [`CalibrationError::Open`]/[`CalibrationError::Query`] on I/O or sqlite
-/// failures, [`CalibrationError::NoCalibration`] if `MzCalibration` is
+/// [`CalibrationError::FileNotFound`] if the resolved `analysis.tdf` path
+/// doesn't exist (a typo'd path, or a non-TDF `.d` where `analysis.tdf` is
+/// absent), [`CalibrationError::NotATdf`] if the file opens as sqlite but has
+/// no `MzCalibration` table (so it isn't a TDF),
+/// [`CalibrationError::Open`]/[`CalibrationError::Query`] on other I/O or
+/// sqlite failures, [`CalibrationError::NoCalibration`] if `MzCalibration` is
 /// empty, [`CalibrationError::NoFrames`] if `Frames` is empty,
 /// [`CalibrationError::UnexpectedNull`] if a schema-`NOT NULL` column (see
 /// module docs) is null.
 pub fn read_all(path: impl AsRef<Path>) -> Result<CalibrationTables, CalibrationError> {
-    let uri = read_only_uri(path.as_ref())?;
+    let path = path.as_ref();
+    if !path.is_file() {
+        return Err(CalibrationError::FileNotFound(path.display().to_string()));
+    }
+    let uri = read_only_uri(path)?;
     let (io, conn) = turso_core::Connection::from_uri(&uri, turso_core::DatabaseOpts::new())
         .map_err(|e| CalibrationError::Open(e.to_string()))?;
 
     let mut mz = Vec::new();
+    // `MzCalibration` is the defining table for a TDF calibration file; if
+    // preparing this first statement fails (e.g. "no such table"), the file
+    // opened as sqlite but isn't a TDF, so surface `NotATdf` rather than a
+    // raw `Query` string. Later prepares (`TimsCalibration`/`Frames`) stay
+    // `Query`: their absence means corruption/partial data, not wrong type.
     let stmt = conn
         .prepare(
             "SELECT Id, ModelType, DigitizerTimebase, DigitizerDelay, T1, dC1, C0, C1 FROM MzCalibration",
         )
-        .map_err(|e| CalibrationError::Query(e.to_string()))?;
+        .map_err(|e| CalibrationError::NotATdf(e.to_string()))?;
     let mut mz_err = None;
     drive_stmt(&io, stmt, |r| {
         if mz_err.is_some() {

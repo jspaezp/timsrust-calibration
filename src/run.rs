@@ -53,8 +53,16 @@ impl RunCalibration {
     /// This does not detect the acquisition format the way `timsrust` does.
     /// A path to a non-TDF acquisition (TSF, miniTDF, Parquet, ...) simply
     /// fails to find an `analysis.tdf` and returns
-    /// [`CalibrationError::Open`]. Reusing timsrust's format detection
-    /// would need its `pub(crate)` `file_type()` made public upstream.
+    /// [`CalibrationError::FileNotFound`]; a sqlite file that opens but lacks
+    /// the `MzCalibration` table returns [`CalibrationError::NotATdf`].
+    /// Reusing timsrust's format detection would need its `pub(crate)`
+    /// `file_type()` made public upstream.
+    ///
+    /// # Errors
+    /// Propagates [`read_all`](crate::sql::read_all)'s errors, notably
+    /// [`CalibrationError::FileNotFound`] (no `analysis.tdf` at the resolved
+    /// path) and [`CalibrationError::NotATdf`] (opened sqlite lacks
+    /// `MzCalibration`).
     pub fn from_path(path: impl AsRef<str>) -> Result<Self, CalibrationError> {
         let tdf = resolve_tdf_path(path.as_ref());
         let CalibrationTables {

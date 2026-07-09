@@ -78,7 +78,10 @@ let one_over_k0 = im.convert(ScanIndex::try_from(400u32)?);    // -> Im
 Note: `from_path` does not auto-detect the acquisition format the way
 `timsrust` does — it just looks for `analysis.tdf` at the resolved path/`.d`
 directory. Pointing it at a non-TDF acquisition (TSF, miniTDF, Parquet, ...)
-simply fails to find `analysis.tdf` and returns an error.
+returns a `CalibrationError::FileNotFound` when no `analysis.tdf` exists at
+the resolved path, or a `CalibrationError::NotATdf` when the file opens as
+sqlite but lacks the defining `MzCalibration` table — not a raw underlying
+sqlite-engine error.
 
 For maximum accuracy, build a converter for a specific frame (temperature
 varies frame to frame). `frame_id` is the Bruker `Frames.Id` (1-based):

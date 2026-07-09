@@ -36,6 +36,16 @@ pub enum CalibrationError {
     /// query was interrupted/found the database busy.
     #[error("query failed: {0}")]
     Query(String),
+    /// The resolved `analysis.tdf` path does not exist. This covers both a
+    /// typo'd path and pointing at a non-TDF acquisition (TSF, miniTDF,
+    /// Parquet, ...) whose `.d` directory contains no `analysis.tdf`.
+    #[error("TDF file not found: {0}")]
+    FileNotFound(String),
+    /// The file was opened as sqlite but the defining `MzCalibration` table
+    /// is absent, so it isn't a TDF calibration file (e.g. a `.tsf`, some
+    /// other sqlite database, or a non-TDF file that happens to open).
+    #[error("not a TDF calibration file (no MzCalibration table): {0}")]
+    NotATdf(String),
     /// The `MzCalibration` table has no rows.
     #[error("no MzCalibration rows")]
     NoCalibration,
