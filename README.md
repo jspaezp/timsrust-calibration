@@ -19,17 +19,31 @@ recalibration (e.g. lock-mass or MS1-based correction).
 
 ## Install
 
-Not yet on crates.io. Add as a path/git dependency alongside `timsrust-core`
-from the `timsrust` workspace you build against:
+```toml
+[dependencies]
+timsrust-calibration = "0.1"
+```
+
+Until it lands on crates.io, depend on it via git:
 
 ```toml
 [dependencies]
-timsrust-calibration = { path = "../timsrust-calibration" }
-timsrust-core = { path = "../timsrust/crates/timsrust-core" }
+timsrust-calibration = { git = "https://github.com/jspaezp/timsrust-calibration" }
 ```
 
 SQLite reads use the pure-Rust [`turso`](https://crates.io/crates/turso) engine
 (no C libsqlite).
+
+## Compatibility
+
+This crate is built against `timsrust-core` **0.1.x** — the line that
+`timsrust` **0.5.x** uses. Your project's `timsrust` must resolve to that same
+`timsrust-core 0.1.x`, so that a single shared version is in the dependency
+tree. The converters implement `timsrust_core::Converter`; if two incompatible
+`timsrust-core` versions end up in the tree (e.g. your `timsrust` pulls a `0.2`
+core), that trait is a *different type* and the converters silently won't
+satisfy `timsrust`'s bounds. Cargo unifies the `0.1.x` line automatically, so
+this only bites if `timsrust`/`timsrust-core` make a breaking (`0.2`+) jump.
 
 ## Usage
 

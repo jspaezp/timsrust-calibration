@@ -10,7 +10,7 @@ keywords = ["mass-spectrometry", "timstof", "bruker", "calibration", "proteomics
 categories = ["science"]
 
 [dependencies]
-timsrust-core = ">=0.1.4"
+timsrust-core = "0.1.4"
 turso = "0.6"
 thiserror = "2"
 
