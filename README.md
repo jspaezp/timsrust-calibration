@@ -63,7 +63,9 @@ Use the per-run (`_median`) converters unless the run's temperature drifts;
 ### With timsrust frames
 
 The converters are ordinary `timsrust_core::Converter`s, so they slot into
-`timsrust`'s frame reader — e.g. calibrated m/z for every ion in each frame:
+`timsrust`'s frame reader. m/z and intensity are already per-peak; 1/K0 is
+per-scan, so you expand it over each scan's peak range to get three aligned
+per-peak vectors:
 
 ```rust
 use timsrust::TimsTofPath;
@@ -71,21 +73,31 @@ use timsrust::core::{Converter, ScanIndex};
 use timsrust_calibration::RunCalibration;
 
 let cal = RunCalibration::from_path("/data/run.d/analysis.tdf")?;
-let mz = cal.mz_converter_median()?;
-let im = cal.im_converter_median()?;
+let mz_conv = cal.mz_converter_median()?;
+let im_conv = cal.im_converter_median()?;
 
 let frames = TimsTofPath::new("/data/run.d")?.frame_reader()?;
 for index in frames.iter_indices() {
     let frame = frames.get_frame(index)?;
+    let ions = frame.ions();
 
-    // m/z is per peak:
-    let mz_values = frame.ions().mz_values(&mz); // Vec<Mz>, calibrated
+    // already per-peak, in the same order:
+    let mz: Vec<f64> = ions.mz_values(&mz_conv).iter().map(|m| f64::from(*m)).collect();
+    let intensity: Vec<u32> = ions.intensities().iter().map(|i| u32::from(*i)).collect();
 
-    // mobility is per scan (use frame.ions().scan_offsets() to map peaks → scan):
-    for scan in 0..frame.ions().scan_count() {
-        let one_over_k0 = im.convert(ScanIndex::try_from(scan as u32)?); // Im
-        // ...
+    // per-peak 1/K0: repeat each scan's mobility across that scan's peaks
+    let offsets = ions.scan_offsets(); // len = scan_count() + 1
+    let mut mobility: Vec<f64> = Vec::with_capacity(mz.len());
+    for scan in 0..ions.scan_count() {
+        let k0 = f64::from(im_conv.convert(ScanIndex::try_from(scan as u32)?));
+        for _ in offsets[scan]..offsets[scan + 1] {
+            mobility.push(k0);
+        }
     }
+
+    assert_eq!(mz.len(), intensity.len());
+    assert_eq!(mz.len(), mobility.len());
+    // mz[i], intensity[i], mobility[i] all describe the same peak
 }
 ```
 
