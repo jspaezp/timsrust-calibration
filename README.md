@@ -1,7 +1,7 @@
 # timsrust-calibration
 
 Accurate m/z and ion-mobility calibration for Bruker timsTOF `.tdf` data, as
-drop-in [`timsrust_core::Converter`] implementations for
+drop-in [`timsrust_core::Converter`](https://docs.rs/timsrust-core) implementations for
 [`timsrust`](https://github.com/MannLabs/timsrust) 0.5.x.
 
 ## Why
