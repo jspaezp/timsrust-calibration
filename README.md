@@ -13,6 +13,9 @@ polynomial plus a per-frame temperature correction — for a more accurate TOF�
 and scan→(1/K0) conversion. The converters implement `timsrust_core::Converter`,
 so they drop in wherever `timsrust`'s own converters are used.
 
+On internal datasets with temperature shifts, this approach produces more
+accurate calibration than the stock `timsrust` approximation.
+
 It applies the calibration stored in the file; it does **not** perform empirical
 recalibration (e.g. lock-mass or MS1-based correction).
 
