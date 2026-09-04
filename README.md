@@ -2,7 +2,7 @@
 
 Accurate m/z and ion-mobility calibration for Bruker timsTOF `.tdf` data, as
 drop-in [`timsrust_core::Converter`](https://docs.rs/timsrust-core) implementations for
-[`timsrust`](https://github.com/MannLabs/timsrust) 0.5.x.
+[`timsrust`](https://github.com/MannLabs/timsrust) 0.6.5.
 
 ## Why
 
@@ -24,7 +24,7 @@ recalibration (e.g. lock-mass or MS1-based correction).
 
 ```toml
 [dependencies]
-timsrust-calibration = "0.1"
+timsrust-calibration = "0.2"
 ```
 
 Until it lands on crates.io, depend on it via git:
@@ -39,14 +39,14 @@ SQLite reads use the pure-Rust [`turso`](https://crates.io/crates/turso) engine
 
 ## Compatibility
 
-This crate is built against `timsrust-core` **0.1.x** — the line that
-`timsrust` **0.5.x** uses. Your project's `timsrust` must resolve to that same
-`timsrust-core 0.1.x`, so that a single shared version is in the dependency
+This crate is built against `timsrust-core` **0.6.5** — the line that
+`timsrust` **0.6.5** uses. Your project's `timsrust` must resolve to that same
+`timsrust-core 0.6.x`, so that a single shared version is in the dependency
 tree. The converters implement `timsrust_core::Converter`; if two incompatible
-`timsrust-core` versions end up in the tree (e.g. your `timsrust` pulls a `0.2`
+`timsrust-core` versions end up in the tree (e.g. your `timsrust` pulls a `0.7`
 core), that trait is a *different type* and the converters silently won't
-satisfy `timsrust`'s bounds. Cargo unifies the `0.1.x` line automatically, so
-this only bites if `timsrust`/`timsrust-core` make a breaking (`0.2`+) jump.
+satisfy `timsrust`'s bounds. Cargo unifies the `0.6.x` line automatically, so
+this only bites if `timsrust`/`timsrust-core` make a breaking (`0.7`+) jump.
 
 ## Usage
 
