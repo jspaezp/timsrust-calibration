@@ -1,6 +1,6 @@
 [package]
 name = "timsrust-calibration"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Physical m/z and mobility calibration converters for timsTOF TDF data"
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ exclude = [".github", ".gitignore", "tests"]
 
 [dependencies]
 timsrust-core = "0.6.5"
-turso = "0.6"
+turso = { version = "0.6", default-features = false }
 thiserror = "2"
 
 [dev-dependencies]
